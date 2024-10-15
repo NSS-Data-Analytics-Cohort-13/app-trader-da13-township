@@ -29,7 +29,7 @@ a. App Trader will purchase apps for 10,000 times the price of the app. For apps
     
 - The cost of an app is not affected by how many app stores it is on. A $1.00 app on the Apple app store will cost the same as a $1.00 app on both stores. 
     
-- If an app is on both stores, it's purchase price will be calculated based off of the highest app price between the two stores. 
+- If an app is on both stores, it's purchase price will be calculated based off of the highest app price between the two stores..
 
 b. Apps earn $5000 per month, per app store it is on, from in-app advertising and in-app purchases, regardless of the price of the app.
     
