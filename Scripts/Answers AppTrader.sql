@@ -1,97 +1,124 @@
-SELECT * FROM app_store_apps;
+--Fixing Charlie's code to see the top 10 so we can compare with my top 10 and group's top 10
+--seems like more than half of the apps are matching so we're good as team!!!
 
-SELECT * FROM play_store_apps;
+SELECT DISTINCT *
+FROM app_store_apps
+
+SELECT DISTINCT *
+FROM play_store_apps
+
+--Alter datatypes of certain columns
+ALTER TABLE play_store_apps
+ALTER COLUMN price TYPE money USING (price::money)
+
+ALTER TABLE app_store_apps
+ALTER COLUMN price TYPE money USING (price::money)
+
+ALTER TABLE app_store_apps
+ALTER COLUMN review_count TYPE integer USING (review_count::integer)
+---------------
+
+--Union All the two tables.  Use DISTINCT on both statements to only get duplicates produced by the UNION ALL.  Set this result as its own table with CREATE TABLE.
+-- CREATE TABLE stores_union_all
+-- AS
+SELECT DISTINCT ON (name) name,
+	   price,
+	   review_count,
+	   rating,
+	   content_rating,
+	   primary_genre,
+	   'App Store' AS store
+FROM app_store_apps
+
+UNION ALL
+
+SELECT DISTINCT ON (name) name,
+	   price,
+	   review_count,
+	   rating,
+	   content_rating,
+	   genres,
+	   'Play Store' AS store
+FROM play_store_apps
+ORDER BY name;
+-------------------
+
+--This query returns the names of apps that are in both stores
+SELECT name
+FROM stores_union_all
+GROUP BY name
+HAVING COUNT(*)>1;
+---------
+
+--Also can check this with Intersect
+SELECT DISTINCT name
+FROM app_store_apps
+
+INTERSECT
+
+SELECT DISTINCT name
+
+FROM play_store_apps
+ORDER BY name
+-------------
+
+--Use the either of the above queries as a subquery in the WHERE statement below.  This produces a consolidated list of common apps across both stores, with max price (between the tow stores), review sum, and average rating (rounded to the nearest 0.5).  Content rating and genre are removed here to get GROUP BY to work.  Make this as its own table with CREATE TABLE
+
+CREATE TABLE common_app
+AS
+SELECT name,
+	   MAX(price) AS max_price,
+	   SUM(review_count) AS sum_reviews,
+	   ROUND(AVG(rating)*2,0)/2 AS avg_rating
+FROM stores_union_all
+WHERE name IN (SELECT DISTINCT name
+FROM app_store_apps
+
+INTERSECT
+
+SELECT DISTINCT name
+
+FROM play_store_apps
+ORDER BY name)
+GROUP BY name
+ORDER BY name
+--------
+
+--price has to be set to numeric to get the final calculations to work.
+ALTER TABLE common_app
+ALTER COLUMN max_price TYPE numeric USING (max_price::numeric)
 
 
--- ### App Trader
+--Final top 10 list.  This is a list of common apps with the lowest purchase prices with the highest ratings and review counts.  These would yield the highest potential return on investment based on the info in the README doc.
+SELECT name,
+	   max_price,
+	   sum_reviews,
+	   avg_rating,
+	   CASE WHEN max_price>=0.00 AND max_price<=1.00 THEN 10000.00
+	   		ELSE max_price*10000.00
+			END AS purchase_price,
+	   9000.00 AS earnings_per_month
+FROM common_app
+ORDER BY purchase_price, avg_rating DESC, sum_reviews DESC
+LIMIT 10;
+----------------
 
--- Your team has been hired by a new company called App Trader to help them explore and gain insights from apps that are made available through the Apple App Store and Android Play Store. App Trader is a broker that purchases the rights to apps from developers in order to market the apps and offer in-app purchase. 
+--With content rating and genre
+SELECT c.name,
+	   c.max_price,
+	   c.sum_reviews,
+	   c.avg_rating,
+	   CASE WHEN max_price>=0.00 AND max_price<=1.00 THEN 10000.00
+	   		ELSE max_price*10000.00
+			END AS purchase_price,
+	   9000.00 AS earnings_per_month,
+	   u.primary_genre,
+	   u.content_rating
+FROM common_app AS c
+LEFT JOIN stores_union_all AS u
+USING (name)
+ORDER BY purchase_price, avg_rating DESC, sum_reviews DESC;
 
--- Unfortunately, the data for Apple App Store apps and Android Play Store Apps is located in separate tables with no referential integrity.
-
--- #### 1. Loading the data
--- a. Launch PgAdmin and create a new database called app_trader.  
-
--- b. Right-click on the app_trader database and choose `Restore...`  
-
--- c. Use the default values under the `Restore Options` tab. 
-
--- d. In the `Filename` section, browse to the backup file `app_store_backup.backup` in the data folder of this repository.  
-
--- e. Click `Restore` to load the database.  
-
--- f. Verify that you have two tables:  
---     - `app_store_apps` with 7197 rows 
-
-SELECT * FROM app_store_apps;
-
---     - `play_store_apps` with 10840 rows
-
-SELECT * FROM play_store_apps;
-
--- #### 2. Assumptions
-
--- Based on research completed prior to launching App Trader as a company, you can assume the following:
-
--- a. App Trader will purchase apps for 10,000 times the price of the app. For apps that are priced from free up to $1.00, the purchase price is $10,000.
-
--- - For example, an app that costs $2.00 will be purchased for $20,000.
-    
--- - The cost of an app is not affected by how many app stores it is on. A $1.00 app on the Apple app store will cost the same as a $1.00 app on both stores. 
-    
--- - If an app is on both stores, it's purchase price will be calculated based off of the highest app price between the two stores.
-
---TRY_PARSE
-
-(
-	SELECT	name
-		,	rating   --,AS TEST
-		,	'apple' AS flag
-		,	(COALESCE(NULLIF(price * 1 , 0), 1)) * 10000 ::Money AS purchase_price
-	FROM	app_store_apps
-)
-UNION
-(
-	SELECT	name
-		,	rating
-		,	'android'AS flag
-		,	(COALESCE(NULLIF(CAST(REPLACE(price, '$','') AS NUMERIC) * 1 , 0), 1)) * 10000 ::Money AS purchase_price
-	FROM	play_store_apps)
-ORDER BY purchase_price DESC;
-
--- case when (a.1 price IS NOT NULL AND b.price IS NOT NULL) 
--- 							AND (a.price > b.price) THEN a.price
--- 													ELSE b.price
--- 			END as max_price
---
+SELECT * FROM stores_union_all;
 
 
-
-
--- b. Apps earn $5000 per month, per app store it is on, from in-app advertising and in-app purchases, regardless of the price of the app.
-    
--- - An app that costs $200,000 will make the same per month as an app that costs $1.00. 
-
--- - An app that is on both app stores will make $10,000 per month. 
-
-SELECT * FROM app_store_apps;
-SELECT * FROM play_store_apps;
-
--- c. App Trader will spend an average of $1000 per month to market an app regardless of the price of the app. If App Trader owns rights to the app in both stores, it can market the app for both stores for a single cost of $1000 per month.
-    
--- - An app that costs $200,000 and an app that costs $1.00 will both cost $1000 a month for marketing, regardless of the number of stores it is in.
-
--- d. For every half point that an app gains in rating, its projected lifespan increases by one year. In other words, an app with a rating of 0 can be expected to be in use for 1 year, an app with a rating of 1.0 can be expected to last 3 years, and an app with a rating of 4.0 can be expected to last 9 years.
-    
--- - App store ratings should be calculated by taking the average of the scores from both app stores and rounding to the nearest 0.5.
-
--- e. App Trader would prefer to work with apps that are available in both the App Store and the Play Store since they can market both for the same $1000 per month.
-
-
--- #### 3. Deliverables
-
--- a. Develop some general recommendations as to the price range, genre, content rating, or anything else for apps that the company should target.
-
--- b. Develop a Top 10 List of the apps that App Trader should buy.
-
--- c. Submit a report based on your findings. All analysis work must be done using PostgreSQL, however you may export query results to create charts in Excel for your report. 

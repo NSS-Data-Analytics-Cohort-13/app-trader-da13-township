@@ -1,5 +1,7 @@
-SELECT * FROM app_store_apps;
-SELECT * FROM play_store_apps;
+SELECT * FROM app_store_apps
+WHERE NAME = 'Microsoft Word';
+SELECT * FROM play_store_apps
+WHERE NAME = 'Microsoft Word';
 
 --INTIAL toughts to work on assumptions part a
 
@@ -20,9 +22,9 @@ UNION
 ORDER BY NAME ASC;
 
 
---building further more on the assumtions to add more columns 
+--building further more on the assumtions to add more columns to querry
 --Creating Table as assumtions to review it further
---CREATE TABLE assumptions AS
+CREATE TABLE assumptions AS
 SELECT DISTINCT ON (name) name
 	,	(COALESCE(NULLIF(CAST(REPLACE(price, '$','') AS NUMERIC) * 1 , 0), 1)) * 10000 ::Money AS purchase_price
 	,	genres
@@ -48,8 +50,7 @@ SELECT name
 FROM assumptions
 GROUP BY name
 HAVING COUNT(*)>1
-ORDER BY name asc
-limit 20;
+ORDER BY name asc;
 
 
 -- testing......
@@ -89,13 +90,18 @@ WHERE available_in_both_stores = 'Y';
 
 
 
-SELECT name,
-	   price,
-	   expected_life
+SELECT	name
+	,	price
+	,	expected_life
+	,	profit_per_month
+	,	cost_per_month
+	,	reviews
+	,	genre
 FROM stores
 WHERE available_in_both_stores = 'Y'
 	AND price <20000
 ORDER BY expected_life desc,reviews DESC
-LIMIT 20;
+LIMIT 12;
+
 
 
