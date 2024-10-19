@@ -1,7 +1,5 @@
-SELECT * FROM app_store_apps
-WHERE name = 'Temple Run 2';
-SELECT * FROM play_store_apps
-WHERE name = 'Temple Run 2';
+SELECT * FROM app_store_apps;
+SELECT * FROM play_store_apps;
 
 --INTIAL toughts to work on assumptions part a
 
@@ -63,12 +61,14 @@ SELECT	DISTINCT ON (name) name
 	,	CAST((ROUND(AVG(rating)*2.0)/2.0)*2 +1 AS DECIMAL(5,2)) AS expected_life
 	,	CASE WHEN COUNT(name) > 1 THEN 'Y' ELSE 'N' END AS available_in_both_stores
 	,	MAX(genre) AS genre
+	,	SUM(reviews) AS reviews
 FROM
 (
 SELECT	DISTINCT ON (name) name
 	,	MAX(CASE WHEN price = '0.00' THEN 10000 else CEILING(price)*10000 END) AS Price
 	,	AVG(rating) AS rating
 	,	MAX(primary_genre) AS genre
+	,	MAX(CAST(review_count AS NUMERIC)) as reviews
 FROM app_store_apps
 GROUP BY name
 UNION ALL
@@ -77,6 +77,7 @@ SELECT	DISTINCT ON (name) name
 			ELSE CEILING(CAST(REPLACE(price, '$','')AS NUMERIC))*10000 END) AS price
 	,	AVG(rating)
 	,	MAX(genres)
+	,	MAX(review_count)
 FROM play_store_apps
 GROUP BY name)
 GROUP BY name;
@@ -93,7 +94,8 @@ SELECT name,
 	   expected_life
 FROM stores
 WHERE available_in_both_stores = 'Y'
-ORDER BY price, expected_life DESC
+	AND price <20000
+ORDER BY expected_life desc,reviews DESC
 LIMIT 20;
 
 
